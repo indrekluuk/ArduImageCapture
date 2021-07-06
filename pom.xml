@@ -27,7 +27,6 @@
         <maven.compiler.target>${java.version}</maven.compiler.target>
         <jserialcomm-version>2.6.2</jserialcomm-version>
         <apache-commons-lang3-version>3.11</apache-commons-lang3-version>
-        <apache-commons-io>2.6</apache-commons-io>
         <junit-version>5.8.0-M1</junit-version>
     </properties>
 
@@ -46,13 +45,6 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
             <version>${apache-commons-lang3-version}</version>
-        </dependency>
-
-        <!-- https://mvnrepository.com/artifact/commons-io/commons-io -->
-        <dependency>
-            <groupId>commons-io</groupId>
-            <artifactId>commons-io</artifactId>
-            <version>${apache-commons-io}</version>
         </dependency>
 
         <!-- arduino-core.jar and pde.jar -->
