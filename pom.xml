@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.circuitjournal</groupId>
+    <artifactId>ArduImageCapture</artifactId>
+    <version>1.0</version>
+    <packaging>jar</packaging>
+
+    <properties>
+
+        <!-- we need two jar files arduino-core.jar and pde.jar from the Arduino install directory -->
+        <!-- arduino-lib-dir>C:/Program Files (x86)/Arduino/lib</arduino-lib-dir -->
+        <arduino-lib-dir>${project.basedir}/lib/external</arduino-lib-dir>
+
+        <!-- creates "ArduImageCapture" plugin into selected folder-->
+        <!--output-directory>${project.basedir}/out</output-directory-->
+        <!-- you can build directly to Arduino->Tools folder -->
+        <output-directory>C:/Users/indrek/Documents/Arduino/tools</output-directory>
+
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+        <java.version>1.8</java.version>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
+        <jserialcomm-version>2.6.2</jserialcomm-version>
+        <apache-commons-lang3-version>3.11</apache-commons-lang3-version>
+        <apache-commons-io>2.6</apache-commons-io>
+        <junit-version>5.8.0-M1</junit-version>
+    </properties>
+
+
+    <dependencies>
+
+        <!-- https://mvnrepository.com/artifact/com.fazecast/jSerialComm -->
+        <dependency>
+            <groupId>com.fazecast</groupId>
+            <artifactId>jSerialComm</artifactId>
+            <version>${jserialcomm-version}</version>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.apache.commons/commons-lang3 -->
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>${apache-commons-lang3-version}</version>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/commons-io/commons-io -->
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>${apache-commons-io}</version>
+        </dependency>
+
+        <!-- arduino-core.jar and pde.jar -->
+        <dependency>
+            <groupId>external.arduino.ide</groupId>
+            <artifactId>arduino-core-jar</artifactId>
+            <version>1.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>external.arduino.ide</groupId>
+            <artifactId>pde-jar</artifactId>
+            <version>1.0</version>
+            <scope>provided</scope>
+        </dependency>
+
+
+
+        <!-- https://mvnrepository.com/artifact/org.junit.jupiter/junit-jupiter-api -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>${junit-version}</version>
+            <scope>test</scope>
+        </dependency>
+
+    </dependencies>
+
+
+
+
+    <build>
+        <finalName>ArduImageCapture</finalName>
+
+        <plugins>
+
+            <!-- Add Arduino IDE jars to our local Maven repo so they can be used as dependencies -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-install-plugin</artifactId>
+                <version>2.5.2</version>
+                <executions>
+                    <!-- arduino-core.jar -->
+                    <execution>
+                        <id>install-external-arduino-core</id>
+                        <phase>clean</phase>
+                        <configuration>
+                            <file>${arduino-lib-dir}/arduino-core.jar</file>
+                            <repositoryLayout>default</repositoryLayout>
+                            <groupId>external.arduino.ide</groupId>
+                            <artifactId>arduino-core-jar</artifactId>
+                            <version>1.0</version>
+                            <packaging>jar</packaging>
+                            <generatePom>true</generatePom>
+                        </configuration>
+                        <goals>
+                            <goal>install-file</goal>
+                        </goals>
+                    </execution>
+                    <!-- pde.jar -->
+                    <execution>
+                        <id>install-external-pde</id>
+                        <phase>clean</phase>
+                        <configuration>
+                            <file>${arduino-lib-dir}/pde.jar</file>
+                            <repositoryLayout>default</repositoryLayout>
+                            <groupId>external.arduino.ide</groupId>
+                            <artifactId>pde-jar</artifactId>
+                            <version>1.0</version>
+                            <packaging>jar</packaging>
+                            <generatePom>true</generatePom>
+                        </configuration>
+                        <goals>
+                            <goal>install-file</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.1.2</version>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>prepare-package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/libs</outputDirectory>
+                            <overWriteReleases>false</overWriteReleases>
+                            <overWriteSnapshots>false</overWriteSnapshots>
+                            <overWriteIfNewer>true</overWriteIfNewer>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.2.0</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addClasspath>true</addClasspath>
+                            <classpathPrefix>libs/</classpathPrefix>
+                            <mainClass>
+                                com.circuitjournal.ArduImageCaptureApp
+                            </mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>1.8</version>
+                <executions>
+                    <execution>
+                        <phase>install</phase>
+                        <configuration>
+                            <target>
+                                <!--copy file="target/ArduImageCapture-jar-with-dependencies.jar"
+                                      tofile="${output-directory}/ArduImageCapture/tool/ArduImageCapture.jar"/-->
+                                <copy file="target/ArduImageCapture.jar"
+                                      tofile="${output-directory}/ArduImageCapture/tool/ArduImageCapture.jar"/>
+
+                                <!-- copy dependencies -->
+                                <copy file="target/libs/jSerialComm-2.6.2.jar"
+                                      tofile="${output-directory}/ArduImageCapture/tool/libs/jSerialComm-2.6.2.jar"/>
+                                <copy file="target/libs/commons-lang3-3.11.jar"
+                                      tofile="${output-directory}/ArduImageCapture/tool/libs/commons-lang3-3.11.jar"/>
+                                <!-- copy licenses for dependencies -->
+                                <copy todir="${output-directory}/ArduImageCapture/tool/libs">
+                                    <fileset dir="lib/license" includes="**/*" />
+                                </copy>
+
+                                <!-- copy run scripts -->
+                                <copy todir="${output-directory}/ArduImageCapture">
+                                    <fileset dir="scripts" includes="**/*" />
+                                </copy>
+
+                                <fixcrlf file="${output-directory}/ArduImageCapture/Mac_ArduImageCapture.command" eol="unix"/>
+                                <fixcrlf file="${output-directory}/ArduImageCapture/Linux_ArduImageCapture.sh" eol="unix"/>
+                            </target>
+                        </configuration>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+        </plugins>
+    </build>
+
+
+</project>
