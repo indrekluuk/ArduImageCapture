@@ -1,6 +1,8 @@
 package com.circuitjournal.settings;
 
 
+import com.circuitjournal.serialreader.JSerialCommSerialReader;
+
 public abstract class Settings {
 
     String BAUD_RATE = "ArduImageCapture.default.baudRate";
@@ -10,7 +12,7 @@ public abstract class Settings {
         try {
             return Integer.parseInt(getParameter(BAUD_RATE));
         } catch (NumberFormatException e) {
-            return null;
+            return JSerialCommSerialReader.BAUD_1000000;
         }
     }
 

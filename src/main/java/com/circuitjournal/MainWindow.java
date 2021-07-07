@@ -10,6 +10,8 @@ import com.circuitjournal.settings.Settings;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -73,6 +75,13 @@ public class MainWindow {
         //windowFrame.setSize(1000, 600);
         windowFrame.setLocationRelativeTo(showRelativeTo);
         windowFrame.setVisible(true);
+
+        windowFrame.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent windowEvent) {
+                stopListening();
+            }
+        });
     }
 
     public void setExitOnClose() {
@@ -164,7 +173,13 @@ public class MainWindow {
         stopListenButton = new JButton(BUTTON_NAME_STOP);
         stopListenButton.setEnabled(false);
 
-        startListenButton.addActionListener((event)-> this.startListening());
+        startListenButton.addActionListener((event)-> {
+            this.startListening();
+            Integer selectedBaudRate = (Integer)baudRateSelection.getSelectedItem();
+            if (selectedBaudRate != null) {
+                settings.saveDefaultBaudRate(selectedBaudRate);
+            }
+        });
 
         stopListenButton.addActionListener((event)-> this.stopListening());
 

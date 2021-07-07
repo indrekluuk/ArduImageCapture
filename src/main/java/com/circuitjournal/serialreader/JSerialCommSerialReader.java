@@ -22,13 +22,13 @@ public class JSerialCommSerialReader implements SerialReader, SerialPortDataList
 
   private static final int TIME_OUT = 2000;
 
-  private static final int BAUD_2000000 = 2000000; //may be unreliable
-  private static final int BAUD_1000000 = 1000000;
-  private static final int BAUD_115200 = 115200;
-  private static final int BAUD_57600 = 57600;
-  private static final int BAUD_38400 = 38400;
-  private static final int BAUD_19200 = 19200;
-  private static final int BAUD_9600 = 9600;
+  public static final int BAUD_2000000 = 2000000; //may be unreliable
+  public static final int BAUD_1000000 = 1000000;
+  public static final int BAUD_115200 = 115200;
+  public static final int BAUD_57600 = 57600;
+  public static final int BAUD_38400 = 38400;
+  public static final int BAUD_19200 = 19200;
+  public static final int BAUD_9600 = 9600;
 
   private List<Integer> baudRateList = Arrays.asList(
           BAUD_2000000,
@@ -149,7 +149,7 @@ public class JSerialCommSerialReader implements SerialReader, SerialPortDataList
 
   private Map<String, SerialPort> getSerialPorts() {
     Map<String, SerialPort> portIdentifierMap = new LinkedHashMap<>();
-    SerialPort serialPorts [] = SerialPort.getCommPorts();
+    SerialPort [] serialPorts = SerialPort.getCommPorts();
     for(SerialPort serialPort : serialPorts) {
       portIdentifierMap.put(serialPort.getSystemPortName(), serialPort);
     }
