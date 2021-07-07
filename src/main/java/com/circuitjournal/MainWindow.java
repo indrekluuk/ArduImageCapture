@@ -10,7 +10,6 @@ import com.circuitjournal.settings.Settings;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.ActionEvent;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.text.SimpleDateFormat;
@@ -55,10 +54,7 @@ public class MainWindow {
         this.imageCapture = new ImageCapture(this::drawImage, this::debugTextReceived);
 
         this.serialReader = serialReader;
-        this.serialReader.setReceivedDataHandler((bytes)-> {
-            // Make sure that table update is executed in AWT thread
-            SwingUtilities.invokeLater(()-> imageCapture.addReceivedBytes(bytes));
-        });
+        this.serialReader.setReceivedDataHandler((bytes)-> imageCapture.addReceivedBytes(bytes));
         this.settings = settings;
 
         this.mainPanel = new JPanel(new BorderLayout());
@@ -168,13 +164,9 @@ public class MainWindow {
         stopListenButton = new JButton(BUTTON_NAME_STOP);
         stopListenButton.setEnabled(false);
 
-        startListenButton.addActionListener((event)->{
-            this.startListening();
-        });
+        startListenButton.addActionListener((event)-> this.startListening());
 
-        stopListenButton.addActionListener((event)->{
-            this.stopListening();
-        });
+        stopListenButton.addActionListener((event)-> this.stopListening());
 
         toolBar.add(startListenButton);
         toolBar.add(stopListenButton);
@@ -210,8 +202,8 @@ public class MainWindow {
     private void drawImage(ImageFrame imageFrame, Integer lineIndex) {
         JLabel imageContainer = this.imageContainer;
 
-        // update image in a separate thread so it would not block reading data
-        new Thread(() -> {
+        // Make sure that table update is executed in AWT thread
+        SwingUtilities.invokeLater(()-> {
             synchronized (imageContainer) {
                 Graphics2D g = imageBuffer.createGraphics();
                 int fromLine = lineIndex != null ? lineIndex : 0;
@@ -227,11 +219,11 @@ public class MainWindow {
                 }
                 imageContainer.repaint();
                 // wait for last line to be drawn
-                if (selectedFolder != null && lineIndex == imageFrame.getLineCount() - 1) {
+                if (selectedFolder != null && toLine == imageFrame.getLineCount() - 1) {
                     saveImageToFile(imageBuffer.getSubimage(0, 0, imageFrame.getLineLength(), imageFrame.getLineCount()), selectedFolder);
                 }
             }
-        }).start();
+        });
     }
 
 
