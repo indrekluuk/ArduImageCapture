@@ -110,7 +110,7 @@ public class MainWindow {
 
     private JButton createSelectFolderButton(JLabel filePathLabel) {
         JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        fileChooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
         fileChooser.setDialogTitle(SELECT_SAVE_FOLDER_TILE);
 
         JButton listenButton = new JButton(BUTTON_NAME_SELECT_SAVE_FOLDER);
@@ -119,6 +119,9 @@ public class MainWindow {
 
             if (fileChooser.showOpenDialog(listenButton) == JFileChooser.APPROVE_OPTION) {
                 selectedFolder = fileChooser.getSelectedFile();
+                if (!selectedFolder.isDirectory()) {
+                    selectedFolder = selectedFolder.getParentFile();
+                }
                 String selectedFolderPath = selectedFolder.getAbsolutePath();
                 filePathLabel.setText(selectedFolderPath);
                 settings.saveDefaultSaveFolder(selectedFolderPath);
