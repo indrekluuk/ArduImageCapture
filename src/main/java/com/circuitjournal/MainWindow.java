@@ -6,6 +6,7 @@ import com.circuitjournal.capture.ImageFrame;
 import com.circuitjournal.serialreader.SerialReader;
 import com.circuitjournal.serialreader.SerialReaderException;
 import com.circuitjournal.settings.Settings;
+import org.apache.commons.lang3.StringUtils;
 
 import javax.imageio.ImageIO;
 import javax.swing.*;
@@ -118,17 +119,28 @@ public class MainWindow {
 
             if (fileChooser.showOpenDialog(listenButton) == JFileChooser.APPROVE_OPTION) {
                 selectedFolder = fileChooser.getSelectedFile();
-                filePathLabel.setText(selectedFolder.getAbsolutePath());
+                String selectedFolderPath = selectedFolder.getAbsolutePath();
+                filePathLabel.setText(selectedFolderPath);
+                settings.saveDefaultSaveFolder(selectedFolderPath);
             }
         });
         return listenButton;
     }
 
     private File getDefaultSaveDirectory() {
+        String defaultSaveFolder = settings.getDefaultSaveFolder();
+        if (StringUtils.isNotBlank(defaultSaveFolder)) {
+            File dir = new File(defaultSaveFolder);
+            if (dir.exists() && dir.isDirectory()) {
+                return dir;
+            }
+        }
+
         String currentDir = System.getProperty("user.dir");
         File dir = new File(currentDir + DEFAULT_IMAGE_DIRECTORY);
         return dir.exists() ? dir : new File(currentDir);
     }
+
 
     private JComponent createImagePanel() {
         imageBuffer = new BufferedImage(MAX_IMAGE_W,MAX_IMAGE_H, BufferedImage.TYPE_INT_ARGB);
