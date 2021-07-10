@@ -76,26 +76,17 @@ public class MainWindow {
         this.settings = settings;
 
         this.mainPanel = new JPanel(new BorderLayout());
-        this.mainPanel.add(createToolbar(), BorderLayout.PAGE_START);
+        this.mainPanel.add(createTopToolbar(), BorderLayout.PAGE_START);
+        this.mainPanel.add(createCenterScrollablePanel(), BorderLayout.CENTER);
+        this.mainPanel.add(createBottomPanels(), BorderLayout.PAGE_END);
 
-        JPanel contentPanel = new JPanel(new BorderLayout());
-        contentPanel.add(createImagePanel(), BorderLayout.PAGE_START);
-        contentPanel.add(createDebugWindow());
-        this.mainPanel.add(new JScrollPane(contentPanel), BorderLayout.CENTER);
+        this.windowFrame.setContentPane(mainPanel);
+        this.windowFrame.pack();
+        //this.windowFrame.setSize(1000, 600);
+        this.windowFrame.setLocationRelativeTo(showRelativeTo);
+        this.windowFrame.setVisible(true);
 
-        JPanel bottomPanel = new JPanel();
-        bottomPanel.setLayout(new BorderLayout());
-        bottomPanel.add(createSavePanel(), BorderLayout.PAGE_START);
-        bottomPanel.add(createFooter(), BorderLayout.PAGE_END);
-        this.mainPanel.add(bottomPanel, BorderLayout.PAGE_END);
-
-        windowFrame.setContentPane(mainPanel);
-        windowFrame.pack();
-        //windowFrame.setSize(1000, 600);
-        windowFrame.setLocationRelativeTo(showRelativeTo);
-        windowFrame.setVisible(true);
-
-        windowFrame.addWindowListener(new WindowAdapter() {
+        this.windowFrame.addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent windowEvent) {
                 stopListening();
@@ -113,133 +104,9 @@ public class MainWindow {
     }
 
 
-    private JComponent createSavePanel() {
-        JPanel saveBar = new JPanel ();
-        saveBar.setLayout(new BoxLayout(saveBar, BoxLayout.X_AXIS));
-        JLabel filePathLabel = new JLabel();
-
-        saveBar.add(createSelectFolderButton(filePathLabel));
-        saveBar.add(Box.createHorizontalStrut(10));
-        saveBar.add(filePathLabel);
-        saveBar.add(saveCountLabel);
-
-        return saveBar;
-    }
-
-    private JButton createSelectFolderButton(JLabel filePathLabel) {
-        JFileChooser fileChooser = new JFileChooser();
-        fileChooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
-        fileChooser.setDialogTitle(SELECT_SAVE_FOLDER_TILE);
-
-        JButton listenButton = new JButton(BUTTON_NAME_SELECT_SAVE_FOLDER);
-        listenButton.addActionListener((event)->{
-            fileChooser.setCurrentDirectory(selectedFolder == null ? getDefaultSaveDirectory() : selectedFolder);
-
-            if (fileChooser.showOpenDialog(listenButton) == JFileChooser.APPROVE_OPTION) {
-                selectedFolder = fileChooser.getSelectedFile();
-                if (!selectedFolder.isDirectory()) {
-                    selectedFolder = selectedFolder.getParentFile();
-                }
-                String selectedFolderPath = selectedFolder.getAbsolutePath();
-                filePathLabel.setText(selectedFolderPath);
-                settings.saveDefaultSaveFolder(selectedFolderPath);
-            }
-        });
-        return listenButton;
-    }
-
-    private File getDefaultSaveDirectory() {
-        String defaultSaveFolder = settings.getDefaultSaveFolder();
-        if (StringUtils.isNotBlank(defaultSaveFolder)) {
-            File dir = new File(defaultSaveFolder);
-            if (dir.exists() && dir.isDirectory()) {
-                return dir;
-            }
-        }
-
-        String currentDir = System.getProperty("user.dir");
-        File dir = new File(currentDir + DEFAULT_IMAGE_DIRECTORY);
-        return dir.exists() ? dir : new File(currentDir);
-    }
 
 
-    private JComponent createImagePanel() {
-        imageBuffer = new BufferedImage(MAX_IMAGE_W,MAX_IMAGE_H, BufferedImage.TYPE_INT_ARGB);
-        imageContainer = new JLabel(new ImageIcon(imageBuffer));
-        return imageContainer;
-    }
-
-
-    private JPanel createFooter() {
-        JPanel footer = new JPanel(new FlowLayout());
-        footer.add(createHyperLink(URL_TITLE, URL_TARGET));
-        footer.setBackground(new Color(0.0f,1.0f,1.0f));
-
-        checkForUpdates((versionMessage)->{
-            footer.add(new JLabel("(" + versionMessage + ")"));
-            footer.revalidate();
-        });
-
-        return footer;
-    }
-
-    private JLabel createHyperLink(String label, String url) {
-        JLabel jWwwLabel = new JLabel("<html><a href='" + url + "'>" + label + "</a></html>");
-        jWwwLabel.setCursor(new Cursor(Cursor.HAND_CURSOR));
-        jWwwLabel.addMouseListener(new MouseAdapter() {
-            public void mouseClicked(MouseEvent event) {
-                try {
-                    Desktop.getDesktop().browse(new URI(url));
-                } catch (Exception e) {
-                    throw new RuntimeException("Can't open URL", e);
-                }
-            }
-        });
-        return jWwwLabel;
-    }
-
-
-    private void checkForUpdates(Consumer<String> updatedVersionMessage) {
-        Thread thread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    URL url = new URL(VERSION_CHECK_URL);
-                    HttpsURLConnection con = (HttpsURLConnection) url.openConnection();
-                    con.setRequestMethod("GET");
-                    con.setConnectTimeout(5000);
-                    con.setReadTimeout(5000);
-
-                    try {
-                        int status = con.getResponseCode();
-                        if (status > 299) {
-                            // do nothing if error
-                        } else {
-                            BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
-                            String versionMessage = in.readLine();
-                            if (StringUtils.isNotBlank(versionMessage)) {
-                                SwingUtilities.invokeLater(()-> updatedVersionMessage.accept(versionMessage));
-                            }
-                            in.close();
-                        }
-                    } finally {
-                        con.disconnect();
-                    }
-                } catch (Exception e) {
-                }
-            }
-        });
-        thread.start();
-    }
-
-
-    private Component createDebugWindow() {
-        debugWindow = new TextArea();
-        return debugWindow;
-    }
-
-
-    private JToolBar createToolbar() {
+    private JToolBar createTopToolbar() {
         JToolBar toolBar = new JToolBar();
         toolBar.setFloatable(false);
         createComPortOption(toolBar);
@@ -310,6 +177,155 @@ public class MainWindow {
     }
 
 
+
+
+
+
+
+    private JScrollPane createCenterScrollablePanel() {
+        JPanel contentPanel = new JPanel(new BorderLayout());
+        contentPanel.add(createImagePanel(), BorderLayout.PAGE_START);
+        contentPanel.add(createDebugWindow());
+        return new JScrollPane(contentPanel);
+    }
+
+    private JComponent createImagePanel() {
+        imageBuffer = new BufferedImage(MAX_IMAGE_W,MAX_IMAGE_H, BufferedImage.TYPE_INT_ARGB);
+        imageContainer = new JLabel(new ImageIcon(imageBuffer));
+        return imageContainer;
+    }
+
+    private Component createDebugWindow() {
+        debugWindow = new TextArea();
+        return debugWindow;
+    }
+
+
+
+
+    private JComponent createBottomPanels() {
+        JPanel bottomPanel = new JPanel();
+        bottomPanel.setLayout(new BorderLayout());
+        bottomPanel.add(createSavePanel(), BorderLayout.PAGE_START);
+        bottomPanel.add(createFooter(), BorderLayout.PAGE_END);
+        return bottomPanel;
+    }
+
+
+    private JComponent createSavePanel() {
+        JPanel saveBar = new JPanel ();
+        saveBar.setLayout(new BoxLayout(saveBar, BoxLayout.X_AXIS));
+        JLabel filePathLabel = new JLabel();
+
+        saveBar.add(createSelectFolderButton(filePathLabel));
+        saveBar.add(Box.createHorizontalStrut(10));
+        saveBar.add(filePathLabel);
+        saveBar.add(saveCountLabel);
+
+        return saveBar;
+    }
+
+    private JButton createSelectFolderButton(JLabel filePathLabel) {
+        JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
+        fileChooser.setDialogTitle(SELECT_SAVE_FOLDER_TILE);
+
+        JButton listenButton = new JButton(BUTTON_NAME_SELECT_SAVE_FOLDER);
+        listenButton.addActionListener((event)->{
+            fileChooser.setCurrentDirectory(selectedFolder == null ? getDefaultSaveDirectory() : selectedFolder);
+
+            if (fileChooser.showOpenDialog(listenButton) == JFileChooser.APPROVE_OPTION) {
+                selectedFolder = fileChooser.getSelectedFile();
+                if (!selectedFolder.isDirectory()) {
+                    selectedFolder = selectedFolder.getParentFile();
+                }
+                String selectedFolderPath = selectedFolder.getAbsolutePath();
+                filePathLabel.setText(selectedFolderPath);
+                settings.saveDefaultSaveFolder(selectedFolderPath);
+            }
+        });
+        return listenButton;
+    }
+
+    private File getDefaultSaveDirectory() {
+        String defaultSaveFolder = settings.getDefaultSaveFolder();
+        if (StringUtils.isNotBlank(defaultSaveFolder)) {
+            File dir = new File(defaultSaveFolder);
+            if (dir.exists() && dir.isDirectory()) {
+                return dir;
+            }
+        }
+
+        String currentDir = System.getProperty("user.dir");
+        File dir = new File(currentDir + DEFAULT_IMAGE_DIRECTORY);
+        return dir.exists() ? dir : new File(currentDir);
+    }
+
+
+    private JPanel createFooter() {
+        JPanel footer = new JPanel(new FlowLayout());
+        footer.add(createHyperLink(URL_TITLE, URL_TARGET));
+        footer.setBackground(new Color(0.0f,1.0f,1.0f));
+
+        checkForUpdates((versionMessage)->{
+            footer.add(new JLabel("(" + versionMessage + ")"));
+            footer.revalidate();
+        });
+
+        return footer;
+    }
+
+    private JLabel createHyperLink(String label, String url) {
+        JLabel jWwwLabel = new JLabel("<html><a href='" + url + "'>" + label + "</a></html>");
+        jWwwLabel.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        jWwwLabel.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent event) {
+                try {
+                    Desktop.getDesktop().browse(new URI(url));
+                } catch (Exception e) {
+                    throw new RuntimeException("Can't open URL", e);
+                }
+            }
+        });
+        return jWwwLabel;
+    }
+
+
+    private void checkForUpdates(Consumer<String> updatedVersionMessage) {
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    URL url = new URL(VERSION_CHECK_URL);
+                    HttpsURLConnection con = (HttpsURLConnection) url.openConnection();
+                    con.setRequestMethod("GET");
+                    con.setConnectTimeout(5000);
+                    con.setReadTimeout(5000);
+
+                    try {
+                        int status = con.getResponseCode();
+                        if (status > 299) {
+                            // do nothing if error
+                        } else {
+                            BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
+                            String versionMessage = in.readLine();
+                            if (StringUtils.isNotBlank(versionMessage)) {
+                                SwingUtilities.invokeLater(()-> updatedVersionMessage.accept(versionMessage));
+                            }
+                            in.close();
+                        }
+                    } finally {
+                        con.disconnect();
+                    }
+                } catch (Exception e) {
+                }
+            }
+        });
+        thread.start();
+    }
+
+
+
     private void drawImage(ImageFrame imageFrame, Integer lineIndex) {
         JLabel imageContainer = this.imageContainer;
 
@@ -337,13 +353,6 @@ public class MainWindow {
         });
     }
 
-
-    private void debugTextReceived(String debugText) {
-        System.out.println(debugText);
-        debugWindow.append(debugText + "\n");
-    }
-
-
     private void saveImageToFile(BufferedImage image, File toFolder) {
         try {
             // save image to png file
@@ -359,7 +368,9 @@ public class MainWindow {
         return (new SimpleDateFormat("yyyy-MM-dd_HH.mm.ss.SSS")).format(new Date()) + ".png";
     }
 
-
-
+    private void debugTextReceived(String debugText) {
+        System.out.println(debugText);
+        debugWindow.append(debugText + "\n");
+    }
 
 }
