@@ -9,14 +9,22 @@ import com.circuitjournal.settings.Settings;
 import org.apache.commons.lang3.StringUtils;
 
 import javax.imageio.ImageIO;
+import javax.net.ssl.HttpsURLConnection;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
+import java.net.URI;
+import java.net.URL;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.function.Consumer;
 
 /**
  * Created by indrek on 06.07.2021.
@@ -26,7 +34,14 @@ public class MainWindow {
     private static Integer MAX_IMAGE_W = 640;
     private static Integer MAX_IMAGE_H = 480;
 
-    private static final String WINDOW_TITLE = "Arduino Image Capture";
+
+    private static final String VERSION = "1.0";
+    private static final String WINDOW_TITLE = "ArduImageCapture " + VERSION;
+
+    private static final String URL_TITLE = "circuitjournal.com";
+    private static final String URL_TARGET = "https://circuitjournal.com/arduimagecapture";
+    private static final String VERSION_CHECK_URL = "https://circuitjournal.com/arduimagecapture/version/"+VERSION;
+
     private static final String BUTTON_NAME_LISTEN = "Listen";
     private static final String BUTTON_NAME_STOP = "Stop";
     private static final String BUTTON_NAME_SELECT_SAVE_FOLDER = "Select save folder";
@@ -66,10 +81,13 @@ public class MainWindow {
         JPanel contentPanel = new JPanel(new BorderLayout());
         contentPanel.add(createImagePanel(), BorderLayout.PAGE_START);
         contentPanel.add(createDebugWindow());
-        this.mainPanel.add(new JScrollPane(contentPanel));
+        this.mainPanel.add(new JScrollPane(contentPanel), BorderLayout.CENTER);
 
-        this.mainPanel.add(createSavePanel(), BorderLayout.PAGE_END);
-
+        JPanel bottomPanel = new JPanel();
+        bottomPanel.setLayout(new BorderLayout());
+        bottomPanel.add(createSavePanel(), BorderLayout.PAGE_START);
+        bottomPanel.add(createFooter(), BorderLayout.PAGE_END);
+        this.mainPanel.add(bottomPanel, BorderLayout.PAGE_END);
 
         windowFrame.setContentPane(mainPanel);
         windowFrame.pack();
@@ -149,6 +167,69 @@ public class MainWindow {
         imageBuffer = new BufferedImage(MAX_IMAGE_W,MAX_IMAGE_H, BufferedImage.TYPE_INT_ARGB);
         imageContainer = new JLabel(new ImageIcon(imageBuffer));
         return imageContainer;
+    }
+
+
+    private JPanel createFooter() {
+        JPanel footer = new JPanel(new FlowLayout());
+        footer.add(createHyperLink(URL_TITLE, URL_TARGET));
+        footer.setBackground(new Color(0.0f,1.0f,1.0f));
+
+        checkForUpdates((versionMessage)->{
+            footer.add(new JLabel("(" + versionMessage + ")"));
+            footer.revalidate();
+        });
+
+        return footer;
+    }
+
+    private JLabel createHyperLink(String label, String url) {
+        JLabel jWwwLabel = new JLabel("<html><a href='" + url + "'>" + label + "</a></html>");
+        jWwwLabel.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        jWwwLabel.addMouseListener(new MouseAdapter() {
+            public void mouseClicked(MouseEvent event) {
+                try {
+                    Desktop.getDesktop().browse(new URI(url));
+                } catch (Exception e) {
+                    throw new RuntimeException("Can't open URL", e);
+                }
+            }
+        });
+        return jWwwLabel;
+    }
+
+
+    private void checkForUpdates(Consumer<String> updatedVersionMessage) {
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    URL url = new URL(VERSION_CHECK_URL);
+                    HttpsURLConnection con = (HttpsURLConnection) url.openConnection();
+                    con.setRequestMethod("GET");
+                    con.setConnectTimeout(5000);
+                    con.setReadTimeout(5000);
+
+                    try {
+                        int status = con.getResponseCode();
+                        if (status > 299) {
+                            // do nothing if error
+                        } else {
+                            BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
+                            String versionMessage = in.readLine();
+                            if (StringUtils.isNotBlank(versionMessage)) {
+                                SwingUtilities.invokeLater(()-> updatedVersionMessage.accept(versionMessage));
+                            }
+                            in.close();
+                        }
+                    } finally {
+                        con.disconnect();
+                    }
+                } catch (Exception e) {
+                }
+            }
+        });
+        thread.start();
     }
 
 
