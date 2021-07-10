@@ -205,9 +205,15 @@ public class MainWindow {
 
     private JComponent createBottomPanels() {
         JPanel bottomPanel = new JPanel();
-        bottomPanel.setLayout(new BorderLayout());
-        bottomPanel.add(createSavePanel(), BorderLayout.PAGE_START);
-        bottomPanel.add(createFooter(), BorderLayout.PAGE_END);
+        bottomPanel.setLayout(new GridBagLayout());
+
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.weightx = 1;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.gridwidth = GridBagConstraints.REMAINDER;
+
+        bottomPanel.add(createSavePanel(), gbc);
+        bottomPanel.add(createFooter(), gbc);
         return bottomPanel;
     }
 
