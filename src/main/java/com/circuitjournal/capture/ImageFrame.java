@@ -1,6 +1,8 @@
 package com.circuitjournal.capture;
 
 import java.awt.*;
+import java.util.ArrayList;
+import java.util.Collection;
 
 /**
  * Created by indrek on 7.05.2016.
@@ -51,8 +53,33 @@ public class ImageFrame {
 
 
   public Color getPixelColor(int x, int y) {
-    Pixel pixel = x < getLineLength() && y < getLineCount() ? pixelMatrix[y][x] : null;
-    return pixel == null ? Color.BLACK : pixel.getColor();
+    Pixel pixel = getPixel(x, y);
+    if (pixel != null) {
+      if (pixel.hasInvalidColors()) {
+        fixPixel(pixel, x, y);
+      }
+      return pixel.getColor();
+    } else {
+      return Color.BLACK;
+    }
+  }
+
+  private void fixPixel(Pixel pixel, int x, int y) {
+    Collection<Pixel> surroundingPixels = new ArrayList<>();
+    Pixel topPixel = getPixel(x, y-1);
+    if (topPixel != null) surroundingPixels.add(topPixel);
+    Pixel bottomPixel = getPixel(x, y+1);
+    if (bottomPixel != null) surroundingPixels.add(bottomPixel);
+    Pixel leftPixel = getPixel(x-1, y);
+    if (leftPixel != null) surroundingPixels.add(leftPixel);
+    Pixel rightPixel = getPixel(x+1, y);
+    if (rightPixel != null) surroundingPixels.add(rightPixel);
+    pixel.fixColors(surroundingPixels);
+  }
+
+  private Pixel getPixel(int x, int y) {
+    return x >= 0 && x < getLineLength() &&
+            y >= 0 && y < getLineCount() ? pixelMatrix[y][x] : null;
   }
 
 

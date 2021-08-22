@@ -188,8 +188,7 @@ public class ImageCapture {
         return parse2BytePixel(pixelDataBytes);
       }
       case PIXEL_RGB565_WITH_PARITY_CHECK: {
-        byte [] pixelDataBytes = readAvailablePixelDataBytesWithParityCheck();
-        return parse2BytePixel(pixelDataBytes);
+        return readAvailablePixelWithParityCheck();
       }
       case PIXEL_GRAYSCALE: {
         int rawPixelData = pixelBytes.toByteArray()[0] & 0xFF;
@@ -213,39 +212,49 @@ public class ImageCapture {
   }
 
 
-  private byte [] readAvailablePixelDataBytesWithParityCheck() {
-    byte [] pixedDataBytes = pixelBytes.toByteArray();
-    boolean isFirstByteHigh = isParityCheckHighByte(pixedDataBytes[0]);
-    boolean isSecondByteLow = isParityCheckLowByte(pixedDataBytes[1]);
+  private Pixel readAvailablePixelWithParityCheck() {
+    byte [] pixelDataBytes = pixelBytes.toByteArray();
+    boolean isFirstByteHigh = isParityCheckHighByte(pixelDataBytes[0]);
+    boolean isSecondByteLow = isParityCheckLowByte(pixelDataBytes[1]);
 
     if (isFirstByteHigh && isSecondByteLow) {
       pixelBytes.reset();
-      return pixedDataBytes;
+      return parse2BytePixel(pixelDataBytes);
 
     } else if (!isFirstByteHigh) {
       byte [] fixedPixedDataBytes = new byte[2];
-      fixedPixedDataBytes[0] = 0;
-      fixedPixedDataBytes[1] = pixedDataBytes[0];
+      fixedPixedDataBytes[0] = 0; // RRRRRGGG
+      fixedPixedDataBytes[1] = pixelDataBytes[0]; // GGGBBBBB
       pixelBytes.reset();
-      pixelBytes.write(pixedDataBytes[1]);
-      return fixedPixedDataBytes;
+      pixelBytes.write(pixelDataBytes[1]);
+      Pixel fixedPixel = parse2BytePixel(fixedPixedDataBytes);
+      // Only blue is valid if only second byte is valid
+      fixedPixel.invalidateR();
+      fixedPixel.invalidateG();
+      return fixedPixel;
 
     } else {
       byte [] fixedPixedDataBytes = new byte[2];
-      fixedPixedDataBytes[0] = pixedDataBytes[0];
-      fixedPixedDataBytes[1] = 0;
+      fixedPixedDataBytes[0] = pixelDataBytes[0]; // RRRRRGGG
+      fixedPixedDataBytes[1] = 0; // GGGBBBBB
       pixelBytes.reset();
-      pixelBytes.write(pixedDataBytes[1]);
-      return fixedPixedDataBytes;
+      pixelBytes.write(pixelDataBytes[1]);
+      Pixel fixedPixel = parse2BytePixel(fixedPixedDataBytes);
+      // Only red is valid if only first byte is valid
+      fixedPixel.invalidateG();
+      fixedPixel.invalidateB();
+      return fixedPixel;
     }
   }
 
   private boolean isParityCheckHighByte(byte pixelByte) {
+    // RRRRRGGG
     // Pixel Byte H: odd number of bits under H_BYTE_PARITY_CHECK and H_BYTE_PARITY_INVERT
     return ((pixelByte & H_BYTE_PARITY_CHECK) > 0) != ((pixelByte & H_BYTE_PARITY_INVERT) > 0);
   }
 
   private boolean isParityCheckLowByte(byte pixelByte) {
+    // GGGBBBBB
     // Pixel Byte L: even number of bits under L_BYTE_PARITY_CHECK and L_BYTE_PARITY_INVERT
     return ((pixelByte & L_BYTE_PARITY_CHECK) > 0) == ((pixelByte & L_BYTE_PARITY_INVERT) > 0);
   }
