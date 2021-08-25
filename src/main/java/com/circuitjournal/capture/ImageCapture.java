@@ -10,6 +10,14 @@ import java.nio.charset.StandardCharsets;
  */
 public class ImageCapture {
 
+  private static final int MAX_W = 640;
+  private static final int MAX_H = 480;
+
+
+
+  private static final int PIXEL_FORMAT_CODE_MASK = 0b00000111;
+  private static final int PIXEL_FORMAT_PARITY_CHECK_BIT = 0x80;
+
   enum PixelFormat {
     PIXEL_RGB565(2),
     PIXEL_RGB565_WITH_PARITY_CHECK(2),
@@ -24,13 +32,6 @@ public class ImageCapture {
     }
   }
 
-  private static final int MAX_W = 640;
-  private static final int MAX_H = 480;
-
-
-  private static final int PIXEL_FORMAT_CODE_MASK = 0x07;
-  private static final int PIXEL_FORMAT_PARITY_CHECK_BIT = 0x80;
-
   // Pixel byte parity check:
   // Pixel Byte H: odd number of bits under H_BYTE_PARITY_CHECK and H_BYTE_PARITY_INVERT
   // Pixel Byte L: even number of bits under L_BYTE_PARITY_CHECK and L_BYTE_PARITY_INVERT
@@ -42,14 +43,19 @@ public class ImageCapture {
   private static final int L_BYTE_PARITY_INVERT = 0b00100000;
 
 
+  private static final int COMMAND_MASK = 0b00001111;
+
   private static final byte START_COMMAND = (byte) 0x00;
   private static final byte COMMAND_NEW_FRAME = (byte) 0x01;
   private static final byte COMMAND_END_OF_LINE = (byte) 0x02;
   private static final byte COMMAND_DEBUG_DATA = (byte) 0x03;
 
-  private static final int COMMAND_NEW_FRAME_LENGTH = 5;
+  private static final int COMMAND_FRAME_VERSION_0 = 0x00;
+  private static final int COMMAND_FRAME_VERSION_0_FRAME_LENGTH = 5;
+  private static final int COMMAND_FRAME_VERSION_1 = 0x10;
 
   int activeCommand = -1;
+  int activeCommandVersion = 0;
   int commandByteCount = 0;
   private ByteArrayOutputStream commandBytes = new ByteArrayOutputStream();
   private ByteArrayOutputStream pixelBytes = new ByteArrayOutputStream();
@@ -105,8 +111,9 @@ public class ImageCapture {
 
     if (commandBytes.size() >= commandByteCount) {
       if (activeCommand == COMMAND_NEW_FRAME) {
-        startNewFrame(commandBytes.toByteArray());
-        activeCommand =-1;
+        if (processStartNewFrame(commandBytes.toByteArray())) {
+          activeCommand =-1;
+        }
       } else if (activeCommand == COMMAND_END_OF_LINE) {
         endOfLine();
         activeCommand =-1;
@@ -122,19 +129,47 @@ public class ImageCapture {
   }
 
   private void initCommand(byte command) {
-    activeCommand = command;
+    activeCommand = command & COMMAND_MASK;
+    activeCommandVersion = command & ~COMMAND_MASK;
     commandBytes.reset();
     pixelBytes.reset();
-    if (command == COMMAND_NEW_FRAME) {
-      commandByteCount = COMMAND_NEW_FRAME_LENGTH;
-    } else if (command == COMMAND_DEBUG_DATA) {
-      commandByteCount = 1;
+    if (activeCommand == COMMAND_NEW_FRAME) {
+      if (activeCommandVersion == COMMAND_FRAME_VERSION_0) {
+        commandByteCount = COMMAND_FRAME_VERSION_0_FRAME_LENGTH;
+      } else {
+        commandByteCount = 1; // starting from version 1 first byte is the actual length
+      }
+    } else if (activeCommand == COMMAND_DEBUG_DATA) {
+      commandByteCount = 1; // first byte will give the actual length
     } else {
       commandByteCount = 0;
     }
   }
 
-  private void startNewFrame(byte [] frameDataBytes) {
+
+  private boolean processStartNewFrame(byte [] frameDataBytes) {
+    if (commandByteCount == 1) {
+      int messageLength = frameDataBytes[0];
+      commandByteCount = messageLength + 1; // +1 to include message length byte itself
+      return false;
+
+    } else {
+      switch (activeCommandVersion) {
+        case COMMAND_FRAME_VERSION_0:
+          processNewFrame_version_0(frameDataBytes);
+          break;
+        //case COMMAND_FRAME_VERSION_1:
+        //  break;
+        default:
+          debugDataCallback.debugDataReceived("Frame version 0x" + Integer.toHexString(activeCommandVersion) + " not supported! Please download updated version of this program.");
+          break;
+      }
+      return true;
+    }
+  }
+
+
+  private void processNewFrame_version_0(byte [] frameDataBytes) {
     ByteBuffer frameData = ByteBuffer.wrap(frameDataBytes);
     frameData.order(ByteOrder.BIG_ENDIAN); // or LITTLE_ENDIAN
     int w = parseFrameDimension(frameData.getShort(), 1, MAX_W);
@@ -142,6 +177,8 @@ public class ImageCapture {
     imageFrame = new ImageFrame(w, h);
     pixelFormat = getPixelFormat(frameData.get());
   }
+
+
 
   private int parseFrameDimension(int d, int min, int max) {
     return d > max ? max : (d < min ? min : d);
@@ -282,7 +319,7 @@ public class ImageCapture {
       if (messageLength == 0)  {
         return true;
       } else {
-        commandByteCount = messageLength + 1;
+        commandByteCount = messageLength + 1; // +1 to include message length byte itself
         return false;
       }
     } else {
