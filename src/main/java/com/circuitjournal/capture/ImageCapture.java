@@ -65,6 +65,9 @@ public class ImageCapture {
       if (receivedByte == START_COMMAND) {
         activeCommand = new StartCommand(this);
 
+        // Clear pixel buffer if command is received
+        pixelBytes.reset();
+
       } else {
         processPixelByte(receivedByte);
       }
@@ -72,10 +75,6 @@ public class ImageCapture {
     } else {
       activeCommand.addByte(receivedByte);
       activeCommand = activeCommand.process();
-      if (activeCommand == null) {
-        // Reset pixel buffer if command is done.
-        pixelBytes.reset();
-      }
     }
   }
 
