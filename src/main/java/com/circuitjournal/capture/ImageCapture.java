@@ -1,36 +1,17 @@
 package com.circuitjournal.capture;
 
+import com.circuitjournal.capture.commands.*;
+
 import java.io.ByteArrayOutputStream;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.charset.StandardCharsets;
 
 /**
  * Created by indrek on 4.05.2016.
  */
 public class ImageCapture {
 
-  private static final int MAX_W = 640;
-  private static final int MAX_H = 480;
+  public static final int MAX_W = 640;
+  public static final int MAX_H = 480;
 
-
-
-  private static final int PIXEL_FORMAT_CODE_MASK = 0b00000111;
-  private static final int PIXEL_FORMAT_PARITY_CHECK_BIT = 0x80;
-
-  enum PixelFormat {
-    PIXEL_RGB565(2),
-    PIXEL_RGB565_WITH_PARITY_CHECK(2),
-    PIXEL_GRAYSCALE(1);
-
-    private int byteCount;
-    PixelFormat(int byteCount) {
-      this.byteCount = byteCount;
-    }
-    public int getByteCount() {
-      return byteCount;
-    }
-  }
 
   // Pixel byte parity check:
   // Pixel Byte H: odd number of bits under H_BYTE_PARITY_CHECK and H_BYTE_PARITY_INVERT
@@ -43,21 +24,10 @@ public class ImageCapture {
   private static final int L_BYTE_PARITY_INVERT = 0b00100000;
 
 
-  private static final int COMMAND_MASK = 0b00001111;
-
   private static final byte START_COMMAND = (byte) 0x00;
-  private static final byte COMMAND_NEW_FRAME = (byte) 0x01;
-  private static final byte COMMAND_END_OF_LINE = (byte) 0x02;
-  private static final byte COMMAND_DEBUG_DATA = (byte) 0x03;
 
-  private static final int COMMAND_FRAME_VERSION_0 = 0x00;
-  private static final int COMMAND_FRAME_VERSION_0_FRAME_LENGTH = 5;
-  private static final int COMMAND_FRAME_VERSION_1 = 0x10;
 
-  int activeCommand = -1;
-  int activeCommandVersion = 0;
-  int commandByteCount = 0;
-  private ByteArrayOutputStream commandBytes = new ByteArrayOutputStream();
+  private AbstractCommand activeCommand = null;
   private ByteArrayOutputStream pixelBytes = new ByteArrayOutputStream();
 
   private ImageFrame imageFrame = new ImageFrame(0, 0);
@@ -91,120 +61,39 @@ public class ImageCapture {
   }
 
   public void addReceivedByte(byte receivedByte) {
-    if (activeCommand < 0) {
+    if (activeCommand == null) {
       if (receivedByte == START_COMMAND) {
-        activeCommand = START_COMMAND;
+        activeCommand = new StartCommand(this);
+
       } else {
         processPixelByte(receivedByte);
       }
-    } else {
-      processCommandByte(receivedByte);
-    }
-  }
 
-  private void processCommandByte(byte receivedByte) {
-    if (activeCommand == START_COMMAND) {
-      initCommand(receivedByte);
     } else {
-      commandBytes.write(receivedByte);
-    }
-
-    if (commandBytes.size() >= commandByteCount) {
-      if (activeCommand == COMMAND_NEW_FRAME) {
-        if (processStartNewFrame(commandBytes.toByteArray())) {
-          activeCommand =-1;
-        }
-      } else if (activeCommand == COMMAND_END_OF_LINE) {
-        endOfLine();
-        activeCommand =-1;
-      } else if (activeCommand == COMMAND_DEBUG_DATA) {
-        if (processDebugData(commandBytes.toByteArray())) {
-          activeCommand =-1;
-        }
-      } else {
-        System.out.println("Unknown command code '" + activeCommand + "'");
-        activeCommand =-1;
+      activeCommand.addByte(receivedByte);
+      activeCommand = activeCommand.process();
+      if (activeCommand == null) {
+        // Reset pixel buffer if command is done.
+        pixelBytes.reset();
       }
     }
   }
 
-  private void initCommand(byte command) {
-    activeCommand = command & COMMAND_MASK;
-    activeCommandVersion = command & ~COMMAND_MASK;
-    commandBytes.reset();
-    pixelBytes.reset();
-    if (activeCommand == COMMAND_NEW_FRAME) {
-      if (activeCommandVersion == COMMAND_FRAME_VERSION_0) {
-        commandByteCount = COMMAND_FRAME_VERSION_0_FRAME_LENGTH;
-      } else {
-        commandByteCount = 1; // starting from version 1 first byte is the actual length
-      }
-    } else if (activeCommand == COMMAND_DEBUG_DATA) {
-      commandByteCount = 1; // first byte will give the actual length
-    } else {
-      commandByteCount = 0;
-    }
+  public void initNewFrame(int w, int h, PixelFormat pixelFormat) {
+    this.imageFrame = new ImageFrame(w, h);
+    this.pixelFormat = pixelFormat;
   }
 
-
-  private boolean processStartNewFrame(byte [] frameDataBytes) {
-    if (commandByteCount == 1) {
-      int messageLength = frameDataBytes[0];
-      commandByteCount = messageLength + 1; // +1 to include message length byte itself
-      return false;
-
-    } else {
-      switch (activeCommandVersion) {
-        case COMMAND_FRAME_VERSION_0:
-          processNewFrame_version_0(frameDataBytes);
-          break;
-        //case COMMAND_FRAME_VERSION_1:
-        //  break;
-        default:
-          debugDataCallback.debugDataReceived("Frame version 0x" + Integer.toHexString(activeCommandVersion) + " not supported! Please download updated version of this program.");
-          break;
-      }
-      return true;
-    }
-  }
-
-
-  private void processNewFrame_version_0(byte [] frameDataBytes) {
-    ByteBuffer frameData = ByteBuffer.wrap(frameDataBytes);
-    frameData.order(ByteOrder.BIG_ENDIAN); // or LITTLE_ENDIAN
-    int w = parseFrameDimension(frameData.getShort(), 1, MAX_W);
-    int h = parseFrameDimension(frameData.getShort(), 1, MAX_H);
-    imageFrame = new ImageFrame(w, h);
-    pixelFormat = getPixelFormat(frameData.get());
-  }
-
-
-
-  private int parseFrameDimension(int d, int min, int max) {
-    return d > max ? max : (d < min ? min : d);
-  }
-
-
-  private PixelFormat getPixelFormat(int code) {
-    switch (code & PIXEL_FORMAT_CODE_MASK) {
-      default:
-        System.out.println("Unknown pixel format code '" + code + "'");
-      case 1:
-        if ((code & PIXEL_FORMAT_PARITY_CHECK_BIT) > 0) {
-          return PixelFormat.PIXEL_RGB565_WITH_PARITY_CHECK;
-        } else {
-          return PixelFormat.PIXEL_RGB565;
-        }
-      case 2:
-        return PixelFormat.PIXEL_GRAYSCALE;
-    }
-  }
-
-
-  private void endOfLine() {
+  public void endOfLine() {
     imageCapturedCallback.imageCaptured(imageFrame, imageFrame.getCurrentLineIndex());
     imageFrame.newLine();
   }
+
+  public void printDebugData(String message) {
+    debugDataCallback.debugDataReceived(message);
+  }
+
+
 
 
   private void processPixelByte(byte receivedByte) {
@@ -213,7 +102,6 @@ public class ImageCapture {
       imageFrame.addPixel(readAvailablePixel());
     }
   }
-
 
 
   public Pixel readAvailablePixel() {
@@ -309,23 +197,6 @@ public class ImageCapture {
       return ((data[1] & 0xFF) << 8) + (data[0] & 0xFF);
     } else {
       return 0;
-    }
-  }
-
-
-  private boolean processDebugData(byte [] frameDataBytes) {
-    if (commandByteCount == 1) {
-      int messageLength = frameDataBytes[0];
-      if (messageLength == 0)  {
-        return true;
-      } else {
-        commandByteCount = messageLength + 1; // +1 to include message length byte itself
-        return false;
-      }
-    } else {
-      String debugText = new String(frameDataBytes, 1, frameDataBytes.length - 1, StandardCharsets.UTF_8);
-      debugDataCallback.debugDataReceived(debugText);
-      return true;
     }
   }
 
