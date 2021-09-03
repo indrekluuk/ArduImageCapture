@@ -22,8 +22,11 @@ public class JSerialCommSerialReader implements SerialReader, SerialPortDataList
 
   private static final int TIME_OUT = 2000;
 
-  public static final int BAUD_2000000 = 2000000; //may be unreliable
+  public static final int BAUD_2000000 = 2000000;
   public static final int BAUD_1000000 = 1000000;
+  public static final int BAUD_500000 = 500000;
+  public static final int BAUD_250000 = 250000;
+  public static final int BAUD_230400 = 230400;
   public static final int BAUD_115200 = 115200;
   public static final int BAUD_57600 = 57600;
   public static final int BAUD_38400 = 38400;
@@ -31,13 +34,16 @@ public class JSerialCommSerialReader implements SerialReader, SerialPortDataList
   public static final int BAUD_9600 = 9600;
 
   private List<Integer> baudRateList = Arrays.asList(
-          BAUD_2000000,
-          BAUD_1000000,
-          BAUD_115200,
-          BAUD_57600,
-          BAUD_38400,
-          BAUD_19200,
-          BAUD_9600);
+      BAUD_2000000,
+      BAUD_1000000,
+      BAUD_500000,
+      BAUD_250000,
+      BAUD_230400,
+      BAUD_115200/*,
+      BAUD_57600,
+      BAUD_38400,
+      BAUD_19200,
+      BAUD_9600*/);
 
 
 
@@ -143,7 +149,7 @@ public class JSerialCommSerialReader implements SerialReader, SerialPortDataList
     if (overrideBaudRate != null && baudRateList.contains(overrideBaudRate)) {
       return overrideBaudRate;
     } else {
-      return BAUD_9600;
+      return BAUD_500000;
     }
   }
 

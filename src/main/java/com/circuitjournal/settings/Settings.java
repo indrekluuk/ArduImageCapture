@@ -12,7 +12,7 @@ public abstract class Settings {
         try {
             return Integer.parseInt(getParameter(BAUD_RATE));
         } catch (NumberFormatException e) {
-            return JSerialCommSerialReader.BAUD_1000000;
+            return JSerialCommSerialReader.BAUD_500000;
         }
     }
 
