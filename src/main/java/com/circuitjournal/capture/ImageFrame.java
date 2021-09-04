@@ -1,8 +1,9 @@
 package com.circuitjournal.capture;
 
-import java.awt.*;
+import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
 /**
  * Created by indrek on 7.05.2016.
@@ -29,6 +30,11 @@ public class ImageFrame {
     colIndex = 0;
   }
 
+  public void addPixels(List<Pixel> pixels) {
+    for (Pixel pixel : pixels) {
+      addPixel(pixel);
+    }
+  }
 
   public void addPixel(Pixel pixel) {
     if (lineIndex < pixelMatrix.length
