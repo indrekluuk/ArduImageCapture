@@ -100,7 +100,7 @@ public class MainWindow {
 
     public void setSelectedComPort(String portName) {
         comPortSelection.setSelectedItem(portName);
-        startListening();
+        //startListening();
     }
 
 
