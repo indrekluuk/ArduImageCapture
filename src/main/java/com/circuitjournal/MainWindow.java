@@ -35,7 +35,7 @@ public class MainWindow {
     private static Integer MAX_IMAGE_H = 480;
 
 
-    private static final String VERSION = "1.0";
+    private static final String VERSION = "1.1";
     private static final String WINDOW_TITLE = "ArduImageCapture " + VERSION;
 
     private static final String URL_TITLE = "circuitjournal.com";
