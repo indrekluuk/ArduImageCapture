@@ -33,7 +33,7 @@ public class ImageCapture {
   private AbstractCommand activeCommand = null;
   private ByteArrayOutputStream pixelBytes = new ByteArrayOutputStream();
 
-  private ImageFrame imageFrame = new ImageFrame(0, 0);
+  private ImageFrame imageFrame;
   private PixelFormat pixelFormat = PixelFormat.PIXEL_RGB565;
 
 
@@ -53,8 +53,15 @@ public class ImageCapture {
   public ImageCapture(ImageCaptured callback, DebugData debugCallback) {
     imageCapturedCallback = callback;
     debugDataCallback = debugCallback;
+    initNewFrame(MAX_W, MAX_H, PixelFormat.PIXEL_RGB565);
   }
 
+  public void initNewFrame(int w, int h, PixelFormat pixelFormat) {
+    this.imageFrame = new ImageFrame(w, h, ()->{
+      imageCapturedCallback.imageCaptured(imageFrame, imageFrame.getCurrentLineIndex());
+    });
+    this.pixelFormat = pixelFormat;
+  }
 
 
   public void addReceivedBytes(byte [] receivedBytes) {
@@ -81,13 +88,9 @@ public class ImageCapture {
     }
   }
 
-  public void initNewFrame(int w, int h, PixelFormat pixelFormat) {
-    this.imageFrame = new ImageFrame(w, h);
-    this.pixelFormat = pixelFormat;
-  }
+
 
   public void endOfLine() {
-    imageCapturedCallback.imageCaptured(imageFrame, imageFrame.getCurrentLineIndex());
     imageFrame.newLine();
   }
 
